@@ -42,18 +42,20 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -switch /Applications/Xcode_26.0.app
 
-      - name: Install Mise
+      - name: Install Tuist
         run: |
-          curl https://mise.run | sh
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          # Install Tuist using the official installation script
+          curl -Ls https://install.tuist.io | bash
 
-      - name: Install Tuist via Mise
-        run: |
-          mise install
+          # Add Tuist to PATH for this job
+          echo "/usr/local/bin" >> $GITHUB_PATH
+
+          # Verify installation
+          tuist version
 
       - name: Generate Tuist project
         run: |
-          mise exec -- tuist generate
+          tuist generate
 
       - name: Run tests
         run: |
