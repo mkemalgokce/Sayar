@@ -47,6 +47,10 @@ jobs:
           brew install tuist
           tuist version
 
+      - name: Install dependencies
+        run: |
+          tuist install
+
       - name: Generate Tuist project
         run: |
           tuist generate
