@@ -1,0 +1,32 @@
+# file options
+
+--symlinks ignore
+--swiftversion 6.2
+
+# format options
+--maxwidth 120
+--commas inline
+--comments indent
+--decimalgrouping 3,5
+--exponentcase lowercase
+--exponentgrouping disabled
+--extensionacl on-declarations
+--fractiongrouping disabled
+--ifdef no-indent
+--importgrouping testable-top
+--operatorfunc no-space
+--nospaceoperators ..<, ...
+--selfrequired validate
+--someAny false
+--stripunusedargs closure-only
+--wraparguments preserve
+--wrapcollections preserve
+--wrapparameters preserve
+--lineaftermarks false
+
+# rules
+
+--enable isEmpty
+--disable andOperator
+--disable opaqueGenericParameters
+--disable wrapMultilineStatementBraces

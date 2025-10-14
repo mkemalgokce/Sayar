@@ -1,0 +1,32 @@
+// UAT Configuration
+#include "Base.xcconfig"
+
+// Bundle Identifier
+PRODUCT_BUNDLE_IDENTIFIER = com.mkg.sayar.uat
+
+// App Display Name
+PRODUCT_DISPLAY_NAME = $(PRODUCT_NAME) UAT
+
+// Code Signing will use automatic settings from Base.xcconfig
+
+// Build Configuration
+SWIFT_OPTIMIZATION_LEVEL = -O
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = UAT
+GCC_OPTIMIZATION_LEVEL = s
+GCC_PREPROCESSOR_DEFINITIONS = UAT=1
+
+// Release Settings with Debug Info
+DEBUG_INFORMATION_FORMAT = dwarf-with-dsym
+ONLY_ACTIVE_ARCH = NO
+
+// Custom Settings
+ENVIRONMENT = UAT
+API_BASE_URL = https://api-uat.sayar.com
+ENABLE_LOGGING = YES
+ENABLE_DEBUG_MENU = YES
+ENABLE_ANALYTICS = YES
+API_TIMEOUT = 30
+
+// Code Signing
+CODE_SIGN_IDENTITY = Apple Distribution
+PROVISIONING_PROFILE_SPECIFIER = Sayar App UAT Adhoc Profile

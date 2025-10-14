@@ -1,0 +1,133 @@
+name: Deploy to UAT
+
+on:
+  push:
+    branches:
+      - develop
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: macos-26
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install git-cliff
+        run: |
+          brew install git-cliff
+
+      - name: Update CHANGELOG (Unreleased)
+        run: |
+          git-cliff --unreleased --prepend CHANGELOG.MD
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.MD
+          git diff --staged --quiet || git commit -m "docs: update CHANGELOG for unreleased changes [skip ci]"
+          git push origin develop
+          git-cliff --unreleased > $RUNNER_TEMP/release-notes.txt
+
+      - name: Select Xcode version
+        run: sudo xcode-select -switch /Applications/Xcode_26.0.app
+
+      - name: Show Xcode version
+        run: /usr/bin/xcodebuild -version
+
+      - name: Install Tuist
+        run: |
+          curl -Ls https://install.tuist.io | bash
+
+      - name: Generate Tuist project
+        run: |
+          tuist generate
+
+      - name: Create temporary keychain
+        env:
+          CERTIFICATE_P12: ${{ secrets.CERTIFICATE_P12 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.CERTIFICATE_PASSWORD }}
+        run: |
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          echo "$CERTIFICATE_P12" | base64 --decode > certificate.p12
+          security import certificate.p12 -P "$CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+
+      - name: Install provisioning profile
+        env:
+          PROVISIONING_PROFILE_UAT: ${{ secrets.PROVISIONING_PROFILE_UAT }}
+        run: |
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          echo "$PROVISIONING_PROFILE_UAT" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
+
+      - name: Build and archive
+        env:
+          DEVELOPMENT_TEAM: ${{ secrets.DEVELOPMENT_TEAM }}
+          PROVISIONING_PROFILE_SPECIFIER: ${{ secrets.PROVISIONING_PROFILE_SPECIFIER_UAT }}
+        run: |
+          xcodebuild clean archive \
+            -workspace Sayar.xcworkspace \
+            -scheme "Sayar UAT" \
+            -configuration UAT \
+            -archivePath $RUNNER_TEMP/Sayar.xcarchive \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGN_STYLE=Manual \
+            DEVELOPMENT_TEAM=$DEVELOPMENT_TEAM \
+            PROVISIONING_PROFILE_SPECIFIER="$PROVISIONING_PROFILE_SPECIFIER" \
+            DEBUG_INFORMATION_FORMAT=dwarf-with-dsym
+
+      - name: Export IPA
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath $RUNNER_TEMP/Sayar.xcarchive \
+            -exportPath $RUNNER_TEMP/export \
+            -exportOptionsPlist .github/deployment/ExportOptions-UAT.plist
+
+      - name: Upload dSYMs to Crashlytics
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS_BASE64: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_BASE64 }}
+          FIREBASE_APP_ID_UAT: ${{ secrets.FIREBASE_APP_ID_UAT }}
+        run: |
+          # Install Firebase CLI
+          curl -sL https://firebase.tools | bash
+
+          # Setup Google credentials
+          echo "$GOOGLE_APPLICATION_CREDENTIALS_BASE64" | base64 --decode > $RUNNER_TEMP/google-credentials.json
+          export GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/google-credentials.json
+
+          # Find and upload dSYMs
+          DSYM_PATH=$RUNNER_TEMP/Sayar.xcarchive/dSYMs
+          if [ -d "$DSYM_PATH" ]; then
+            firebase crashlytics:symbols:upload "$DSYM_PATH" \
+              --app=$FIREBASE_APP_ID_UAT
+          fi
+
+      - name: Upload to Firebase App Distribution
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS_BASE64: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_BASE64 }}
+          FIREBASE_APP_ID_UAT: ${{ secrets.FIREBASE_APP_ID_UAT }}
+        run: |
+          # Install Firebase CLI if not already installed
+          curl -sL https://firebase.tools | bash
+
+          # Setup Google credentials
+          echo "$GOOGLE_APPLICATION_CREDENTIALS_BASE64" | base64 --decode > $RUNNER_TEMP/google-credentials.json
+          export GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/google-credentials.json
+
+          # Upload to Firebase App Distribution
+          firebase appdistribution:distribute $RUNNER_TEMP/export/Sayar.ipa \
+            --app $FIREBASE_APP_ID_UAT \
+            --groups "uat-testers" \
+            --release-notes-file $RUNNER_TEMP/release-notes.txt
+
+      - name: Clean up keychain
+        if: always()
+        run: |
+          security delete-keychain $RUNNER_TEMP/app-signing.keychain-db || true

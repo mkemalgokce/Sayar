@@ -1,0 +1,11 @@
+disabled_rules:
+  - nesting
+  - large_tuple
+  - identifier_name
+  - class_delegate_protocol
+  - duplicate_enum_cases
+  - force_try
+  - unused_setter_value
+  - force_cast
+  - operator_whitespace
+  - type_name

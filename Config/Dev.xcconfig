@@ -1,0 +1,32 @@
+// Dev Configuration
+#include "Base.xcconfig"
+
+// Bundle Identifier
+PRODUCT_BUNDLE_IDENTIFIER = com.mkg.sayar.dev
+
+// App Display Name
+PRODUCT_DISPLAY_NAME = $(PRODUCT_NAME) Dev
+
+// Build Configuration
+SWIFT_OPTIMIZATION_LEVEL = -Onone
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG
+GCC_OPTIMIZATION_LEVEL = 0
+GCC_PREPROCESSOR_DEFINITIONS = DEV=1
+
+// Debug Settings
+ENABLE_TESTABILITY = YES
+DEBUG_INFORMATION_FORMAT = dwarf
+ONLY_ACTIVE_ARCH = YES
+
+// Custom Settings
+ENVIRONMENT = DEV
+API_BASE_URL = https://api-dev.sayar.com
+ENABLE_LOGGING = YES
+ENABLE_DEBUG_MENU = YES
+ENABLE_ANALYTICS = YES
+API_TIMEOUT = 30
+
+// Code Signing
+CODE_SIGN_IDENTITY = Apple Development
+PROVISIONING_PROFILE_SPECIFIER = Sayar App Dev Profile
+

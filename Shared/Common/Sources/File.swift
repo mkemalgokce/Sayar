@@ -1,0 +1,3 @@
+enum Common {
+    case deneme
+}

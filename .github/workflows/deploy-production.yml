@@ -1,0 +1,199 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: macos-26
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install git-cliff
+        run: |
+          brew install git-cliff
+
+      - name: Install Tuist
+        run: |
+          curl -Ls https://install.tuist.io | bash
+
+      - name: Generate Tuist project
+        run: |
+          tuist generate
+
+      - name: Get version from project
+        id: version
+        run: |
+          VERSION=$(xcodebuild -workspace Sayar.xcworkspace -scheme "Sayar Prod" -showBuildSettings | grep MARKETING_VERSION | awk '{print $3}' | head -n 1)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
+      - name: Update CHANGELOG and create tag
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          git-cliff --tag "v${VERSION}" --prepend CHANGELOG.MD
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.MD
+          git diff --staged --quiet || git commit -m "chore(release): prepare v${VERSION} [skip ci]"
+          git tag -a "v${VERSION}" -m "Release v${VERSION}"
+          git push origin main
+          git push origin "v${VERSION}"
+
+      - name: Select Xcode version
+        run: sudo xcode-select -switch /Applications/Xcode_26.0.app
+
+      - name: Show Xcode version
+        run: /usr/bin/xcodebuild -version
+
+      - name: Create temporary keychain
+        env:
+          CERTIFICATE_P12: ${{ secrets.CERTIFICATE_P12 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.CERTIFICATE_PASSWORD }}
+        run: |
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          echo "$CERTIFICATE_P12" | base64 --decode > certificate.p12
+          security import certificate.p12 -P "$CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+
+      - name: Install provisioning profile
+        env:
+          PROVISIONING_PROFILE: ${{ secrets.PROVISIONING_PROFILE }}
+        run: |
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          echo "$PROVISIONING_PROFILE" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
+
+      - name: Build and archive
+        env:
+          DEVELOPMENT_TEAM: ${{ secrets.DEVELOPMENT_TEAM }}
+          PROVISIONING_PROFILE_SPECIFIER: ${{ secrets.PROVISIONING_PROFILE_SPECIFIER }}
+        run: |
+          xcodebuild clean archive \
+            -workspace Sayar.xcworkspace \
+            -scheme "Sayar Prod" \
+            -configuration Prod \
+            -archivePath $RUNNER_TEMP/Sayar.xcarchive \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGN_STYLE=Manual \
+            DEVELOPMENT_TEAM=$DEVELOPMENT_TEAM \
+            PROVISIONING_PROFILE_SPECIFIER="$PROVISIONING_PROFILE_SPECIFIER" \
+            DEBUG_INFORMATION_FORMAT=dwarf-with-dsym
+
+      - name: Export IPA
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath $RUNNER_TEMP/Sayar.xcarchive \
+            -exportPath $RUNNER_TEMP/export \
+            -exportOptionsPlist .github/deployment/ExportOptions-Prod.plist
+
+      - name: Upload dSYMs to Crashlytics
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS_BASE64: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_BASE64 }}
+          FIREBASE_APP_ID_PROD: ${{ secrets.FIREBASE_APP_ID_PROD }}
+        run: |
+          # Install Firebase CLI
+          curl -sL https://firebase.tools | bash
+
+          # Setup Google credentials
+          echo "$GOOGLE_APPLICATION_CREDENTIALS_BASE64" | base64 --decode > $RUNNER_TEMP/google-credentials.json
+          export GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/google-credentials.json
+
+          # Find and upload dSYMs
+          DSYM_PATH=$RUNNER_TEMP/Sayar.xcarchive/dSYMs
+          if [ -d "$DSYM_PATH" ]; then
+            firebase crashlytics:symbols:upload "$DSYM_PATH" \
+              --app=$FIREBASE_APP_ID_PROD
+          fi
+
+      - name: Setup App Store Connect API key
+        env:
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_API_KEY_CONTENT: ${{ secrets.APP_STORE_CONNECT_API_KEY_CONTENT }}
+        run: |
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "$APP_STORE_CONNECT_API_KEY_CONTENT" | base64 --decode > ~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8
+
+      - name: Extract version changelog
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          # Extract the specific version section from CHANGELOG
+          awk -v version="$VERSION" '
+            /## \[/ {
+              if (found) exit;
+              if ($0 ~ "## \\[" version "\\]") {
+                found=1;
+                print;
+                next;
+              }
+            }
+            found {print}
+          ' CHANGELOG.MD > $RUNNER_TEMP/testflight-notes.txt
+
+          # If empty, use a default message
+          if [ ! -s $RUNNER_TEMP/testflight-notes.txt ]; then
+            echo "Release v${VERSION}" > $RUNNER_TEMP/testflight-notes.txt
+            git log -5 --pretty=format:"- %s" >> $RUNNER_TEMP/testflight-notes.txt
+          fi
+
+          # Show what will be uploaded
+          echo "TestFlight Release Notes:"
+          cat $RUNNER_TEMP/testflight-notes.txt
+
+      - name: Upload to TestFlight
+        shell: bash
+        env:
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          xcrun altool --validate-app -f $RUNNER_TEMP/export/Sayar.ipa -t ios --apiKey $APP_STORE_CONNECT_API_KEY_ID --apiIssuer $APP_STORE_CONNECT_ISSUER_ID --use-old-altool
+          xcrun altool --upload-app -f $RUNNER_TEMP/export/Sayar.ipa -t ios --apiKey $APP_STORE_CONNECT_API_KEY_ID --apiIssuer $APP_STORE_CONNECT_ISSUER_ID --use-old-altool
+
+      - name: Update TestFlight What to Test notes
+        env:
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+        run: |
+          # Install and setup app-store-connect-cli or use REST API
+          # Wait for the build to be processed
+          echo "Waiting for TestFlight build to be processed..."
+          sleep 60
+
+          # Get the latest build number
+          BUILD_NUMBER=$(xcodebuild -workspace Sayar.xcworkspace -scheme "Sayar Prod" -showBuildSettings | grep CURRENT_PROJECT_VERSION | awk '{print $3}' | head -n 1)
+
+          # Use App Store Connect API to update what to test
+          NOTES=$(cat $RUNNER_TEMP/testflight-notes.txt | jq -Rs .)
+
+          curl -X PATCH "https://api.appstoreconnect.apple.com/v1/builds/${BUILD_NUMBER}" \
+            -H "Authorization: Bearer $(~/.appstoreconnect/private_keys/generate-jwt.sh)" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"data\": {
+                \"type\": \"builds\",
+                \"id\": \"${BUILD_NUMBER}\",
+                \"attributes\": {
+                  \"whatsNew\": ${NOTES}
+                }
+              }
+            }" || echo "Failed to update TestFlight notes. You can add them manually in App Store Connect."
+
+      - name: Clean up keychain
+        if: always()
+        run: |
+          security delete-keychain $RUNNER_TEMP/app-signing.keychain-db || true

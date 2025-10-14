@@ -1,0 +1,34 @@
+// Prod Configuration
+#include "Base.xcconfig"
+
+// Bundle Identifier
+PRODUCT_BUNDLE_IDENTIFIER = com.mkg.sayar.prod
+
+// App Display Name
+PRODUCT_DISPLAY_NAME = $(PRODUCT_NAME)
+
+// Build Configuration
+SWIFT_OPTIMIZATION_LEVEL = -O
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = RELEASE
+GCC_OPTIMIZATION_LEVEL = s
+GCC_PREPROCESSOR_DEFINITIONS = RELEASE=1
+
+// Release Settings
+DEBUG_INFORMATION_FORMAT = dwarf-with-dsym
+ONLY_ACTIVE_ARCH = NO
+VALIDATE_PRODUCT = YES
+
+// Custom Settings
+ENVIRONMENT = PROD
+API_BASE_URL = https://api.sayar.com
+ENABLE_LOGGING = NO
+ENABLE_DEBUG_MENU = NO
+ENABLE_ANALYTICS = YES
+API_TIMEOUT = 60
+
+// App Icon
+ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon
+
+// Code Signing
+CODE_SIGN_IDENTITY = Apple Distribution
+PROVISIONING_PROFILE_SPECIFIER = Sayar App Prod Profile
