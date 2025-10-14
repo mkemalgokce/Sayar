@@ -49,22 +49,13 @@ jobs:
         run: |
           VERSION=$(xcodebuild -workspace Sayar.xcworkspace -scheme "Sayar Prod" -showBuildSettings | grep MARKETING_VERSION | awk '{print $3}' | head -n 1)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Version: $VERSION"
+          echo "📦 Version: $VERSION"
 
-      - name: Update CHANGELOG and create tag
+      - name: Generate CHANGELOG content
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
-          git-cliff --tag "v${VERSION}" --prepend CHANGELOG.MD
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add CHANGELOG.MD
-          if ! git diff --staged --quiet; then
-            git commit -m "chore(release): prepare v${VERSION} [skip ci]"
-            git tag -a "v${VERSION}" -m "Release v${VERSION}"
-            git push origin main
-            git push origin "v${VERSION}"
-          fi
+          git-cliff --tag "v${VERSION}" --prepend CHANGELOG.md
 
       - name: Select Xcode version
         run: sudo xcode-select -switch /Applications/Xcode_26.0.app
@@ -118,25 +109,6 @@ jobs:
             -exportPath $RUNNER_TEMP/export \
             -exportOptionsPlist .github/deployment/ExportOptions-Prod.plist
 
-      - name: Upload dSYMs to Crashlytics
-        env:
-          GOOGLE_APPLICATION_CREDENTIALS_BASE64: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_BASE64 }}
-          FIREBASE_APP_ID_PROD: ${{ secrets.FIREBASE_APP_ID_PROD }}
-        run: |
-          # Install Firebase CLI
-          curl -sL https://firebase.tools | bash
-
-          # Setup Google credentials
-          echo "$GOOGLE_APPLICATION_CREDENTIALS_BASE64" | base64 --decode > $RUNNER_TEMP/google-credentials.json
-          export GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/google-credentials.json
-
-          # Find and upload dSYMs
-          DSYM_PATH=$RUNNER_TEMP/Sayar.xcarchive/dSYMs
-          if [ -d "$DSYM_PATH" ]; then
-            firebase crashlytics:symbols:upload "$DSYM_PATH" \
-              --app=$FIREBASE_APP_ID_PROD
-          fi
-
       - name: Setup App Store Connect API key
         env:
           APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
@@ -145,34 +117,8 @@ jobs:
           mkdir -p ~/.appstoreconnect/private_keys
           echo "$APP_STORE_CONNECT_API_KEY_CONTENT" | base64 --decode > ~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8
 
-      - name: Extract version changelog
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          # Extract the specific version section from CHANGELOG
-          awk -v version="$VERSION" '
-            /## \[/ {
-              if (found) exit;
-              if ($0 ~ "## \\[" version "\\]") {
-                found=1;
-                print;
-                next;
-              }
-            }
-            found {print}
-          ' CHANGELOG.MD > $RUNNER_TEMP/testflight-notes.txt
-
-          # If empty, use a default message
-          if [ ! -s $RUNNER_TEMP/testflight-notes.txt ]; then
-            echo "Release v${VERSION}" > $RUNNER_TEMP/testflight-notes.txt
-            git log -5 --pretty=format:"- %s" >> $RUNNER_TEMP/testflight-notes.txt
-          fi
-
-          # Show what will be uploaded
-          echo "TestFlight Release Notes:"
-          cat $RUNNER_TEMP/testflight-notes.txt
-
       - name: Upload to TestFlight
+        id: testflight_upload
         shell: bash
         env:
           APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
@@ -181,35 +127,25 @@ jobs:
         run: |
           xcrun altool --validate-app -f $RUNNER_TEMP/export/Sayar.ipa -t ios --apiKey $APP_STORE_CONNECT_API_KEY_ID --apiIssuer $APP_STORE_CONNECT_ISSUER_ID --use-old-altool
           xcrun altool --upload-app -f $RUNNER_TEMP/export/Sayar.ipa -t ios --apiKey $APP_STORE_CONNECT_API_KEY_ID --apiIssuer $APP_STORE_CONNECT_ISSUER_ID --use-old-altool
+          echo "✅ TestFlight upload successful"
 
-      - name: Update TestFlight What to Test notes
+      - name: Commit CHANGELOG and create tag after successful deployment
+        if: success()
         env:
-          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
-          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          # Install and setup app-store-connect-cli or use REST API
-          # Wait for the build to be processed
-          echo "Waiting for TestFlight build to be processed..."
-          sleep 60
-
-          # Get the latest build number
-          BUILD_NUMBER=$(xcodebuild -workspace Sayar.xcworkspace -scheme "Sayar Prod" -showBuildSettings | grep CURRENT_PROJECT_VERSION | awk '{print $3}' | head -n 1)
-
-          # Use App Store Connect API to update what to test
-          NOTES=$(cat $RUNNER_TEMP/testflight-notes.txt | jq -Rs .)
-
-          curl -X PATCH "https://api.appstoreconnect.apple.com/v1/builds/${BUILD_NUMBER}" \
-            -H "Authorization: Bearer $(~/.appstoreconnect/private_keys/generate-jwt.sh)" \
-            -H "Content-Type: application/json" \
-            -d "{
-              \"data\": {
-                \"type\": \"builds\",
-                \"id\": \"${BUILD_NUMBER}\",
-                \"attributes\": {
-                  \"whatsNew\": ${NOTES}
-                }
-              }
-            }" || echo "Failed to update TestFlight notes. You can add them manually in App Store Connect."
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          if ! git diff --staged --quiet; then
+            git commit -m "chore(release): prepare v${VERSION} [skip ci]"
+            git tag -a "v${VERSION}" -m "Release v${VERSION}"
+            git push origin main || echo "⚠️ Failed to push CHANGELOG, but deployment was successful"
+            git push origin "v${VERSION}" || echo "⚠️ Failed to push tag, but deployment was successful"
+            echo "✅ CHANGELOG and tag v${VERSION} created"
+          else
+            echo "ℹ️ No CHANGELOG changes to commit"
+          fi
 
       - name: Clean up keychain
         if: always()

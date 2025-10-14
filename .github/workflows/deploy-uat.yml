@@ -24,16 +24,8 @@ jobs:
         run: |
           brew install git-cliff
 
-      - name: Update CHANGELOG (Unreleased)
+      - name: Generate release notes
         run: |
-          git cliff --unreleased --output CHANGELOG.md
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add CHANGELOG.MD
-          if ! git diff --staged --quiet; then
-            git commit -m "docs: update CHANGELOG for unreleased changes [skip ci]"
-            git push origin develop
-          fi
           git-cliff --unreleased > $RUNNER_TEMP/release-notes.txt
 
       - name: Select Xcode version
@@ -62,23 +54,19 @@ jobs:
         run: |
           tuist generate
 
-      - name: Bump build number
+      - name: Get and prepare build number
+        id: build_number
         run: |
           # Get current build number
           CURRENT_BUILD=$(xcodebuild -workspace Sayar.xcworkspace -scheme "Sayar UAT" -showBuildSettings 2>/dev/null | grep CURRENT_PROJECT_VERSION | awk '{print $3}' | head -n 1)
           NEW_BUILD=$(expr $CURRENT_BUILD + 1)
 
-          # Update build number in Base.xcconfig
+          # Update build number in Base.xcconfig (don't commit yet)
           sed -i '' "s/CURRENT_PROJECT_VERSION = .*/CURRENT_PROJECT_VERSION = $NEW_BUILD/" Config/Base.xcconfig
 
-          # Commit the change
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Config/Base.xcconfig
-          git commit -m "chore(uat): bump build number to $NEW_BUILD [skip ci]"
-          git push origin develop
-
-          echo "✅ Build number updated: $CURRENT_BUILD -> $NEW_BUILD"
+          echo "current_build=$CURRENT_BUILD" >> $GITHUB_OUTPUT
+          echo "new_build=$NEW_BUILD" >> $GITHUB_OUTPUT
+          echo "📦 Build number prepared: $CURRENT_BUILD -> $NEW_BUILD"
 
       - name: Create temporary keychain
         env:
@@ -127,6 +115,7 @@ jobs:
             -exportOptionsPlist .github/deployment/ExportOptions-UAT.plist
 
       - name: Upload to Firebase App Distribution
+        id: firebase_upload
         env:
           GOOGLE_APPLICATION_CREDENTIALS_BASE64: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_BASE64 }}
           FIREBASE_APP_ID_UAT: ${{ secrets.FIREBASE_APP_ID_UAT }}
@@ -143,6 +132,32 @@ jobs:
             --app $FIREBASE_APP_ID_UAT \
             --groups "uat-testers" \
             --release-notes-file $RUNNER_TEMP/release-notes.txt
+
+          echo "✅ Firebase upload successful"
+
+      - name: Update CHANGELOG after successful deployment
+        if: success()
+        run: |
+          git cliff --unreleased --output CHANGELOG.md
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          if ! git diff --staged --quiet; then
+            git commit -m "docs: update CHANGELOG for unreleased changes [skip ci]"
+            git push origin develop || echo "⚠️ Failed to push CHANGELOG, but deployment was successful"
+          fi
+
+      - name: Commit build number after successful deployment
+        if: success()
+        env:
+          NEW_BUILD: ${{ steps.build_number.outputs.new_build }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Config/Base.xcconfig
+          git commit -m "chore(uat): bump build number to $NEW_BUILD [skip ci]"
+          git push origin develop || echo "⚠️ Failed to push build number, but deployment was successful"
+          echo "✅ Build number committed: $NEW_BUILD"
 
       - name: Clean up keychain
         if: always()
