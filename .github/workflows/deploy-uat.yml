@@ -26,6 +26,7 @@ jobs:
           path: |
             ~/Library/Caches/Homebrew
             /opt/homebrew/Cellar/git-cliff
+            /opt/homebrew/Cellar/libgit2
             /opt/homebrew/Cellar/tuist
           key: ${{ runner.os }}-brew-deploy-${{ hashFiles('.github/workflows/deploy-uat.yml') }}
           restore-keys: |
@@ -36,6 +37,7 @@ jobs:
         run: |
           brew install git-cliff
           brew link --overwrite git-cliff
+          brew link --overwrite libgit2
 
       - name: Generate release notes
         run: |
