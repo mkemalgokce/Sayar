@@ -1,0 +1,33 @@
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 1%
+    patch:
+      default:
+        target: auto
+        threshold: 1%
+
+  range: 50..100
+
+ignore:
+  - "**/*Tests.swift"
+  - "**/*Tests/**"
+  - "**/Tests/**"
+  - "**/*Mock*.swift"
+  - "**/UITests/**"
+  - "**/Preview Content/**"
+  - "**/*.generated.swift"
+  - "**/Generated/**"
+  - "**/.build/**"
+  - "**/Tuist/**"
+  - "**/DerivedData/**"
+  - "**/App/Resources/**"
+  - "**/*.xcodeproj/**"
+  - "**/*.xcworkspace/**"
+
+comment:
+  layout: "reach,diff,flags,tree"
+  behavior: default
+  require_changes: false
