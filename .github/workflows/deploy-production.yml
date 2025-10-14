@@ -20,6 +20,28 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Cache Homebrew
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/Homebrew
+            /opt/homebrew/Cellar/git-cliff
+            /opt/homebrew/Cellar/tuist
+          key: ${{ runner.os }}-brew-deploy-${{ hashFiles('.github/workflows/deploy-production.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-brew-deploy-
+            ${{ runner.os }}-brew-
+
+      - name: Cache Tuist
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.tuist
+            Tuist/.build
+          key: ${{ runner.os }}-tuist-${{ hashFiles('**/Project.swift', 'Tuist/Package.swift') }}
+          restore-keys: |
+            ${{ runner.os }}-tuist-
+
       - name: Install git-cliff
         run: |
           brew install git-cliff
