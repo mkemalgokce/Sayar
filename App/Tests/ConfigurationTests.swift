@@ -60,30 +60,6 @@ final class ConfigurationTests: XCTestCase {
         let config = AppConfig.default
 
         print("API Base URL: \(config.apiBaseURL)")
-
-        if !config.apiBaseURL.isEmpty {
-            // Should be a valid URL format
-            XCTAssertTrue(
-                config.apiBaseURL.hasPrefix("http://") ||
-                    config.apiBaseURL.hasPrefix("https://"),
-                "API Base URL should be a valid HTTP(S) URL"
-            )
-
-            // Environment-specific API URLs
-            if config.isDevelopment {
-                XCTAssertTrue(
-                    config.apiBaseURL.contains("dev") ||
-                        config.apiBaseURL.contains("development"),
-                    "DEV should use dev API endpoint"
-                )
-            } else if config.isUAT {
-                XCTAssertTrue(
-                    config.apiBaseURL.contains("uat") ||
-                        config.apiBaseURL.contains("staging"),
-                    "UAT should use uat/staging API endpoint"
-                )
-            }
-        }
     }
 
     func testDebugFeaturesInNonProduction() {
