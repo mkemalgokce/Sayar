@@ -96,9 +96,6 @@ jobs:
             -configuration UAT \
             -archivePath $RUNNER_TEMP/Sayar.xcarchive \
             -destination 'generic/platform=iOS' \
-            CODE_SIGN_STYLE=Manual \
-            DEVELOPMENT_TEAM=$DEVELOPMENT_TEAM \
-            PROVISIONING_PROFILE_SPECIFIER="$PROVISIONING_PROFILE_SPECIFIER" \
             DEBUG_INFORMATION_FORMAT=dwarf-with-dsym
 
       - name: Export IPA
