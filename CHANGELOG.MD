@@ -18,6 +18,7 @@ All notable changes to this project will be documented in this file.
 - **ci**: Add write permissions for CHANGELOG updates
 - **ci**: Update github actions workflow files
 - **ci**: Update pipelines and signing
+- **ci**: Update uat pipeline
 
 ### 🚜 Refactor
 
@@ -25,6 +26,7 @@ All notable changes to this project will be documented in this file.
 
 ### 📚 Documentation
 
+- Update CHANGELOG for unreleased changes [skip ci]
 - Update CHANGELOG for unreleased changes [skip ci]
 - Update CHANGELOG for unreleased changes [skip ci]
 - Update CHANGELOG for unreleased changes [skip ci]
