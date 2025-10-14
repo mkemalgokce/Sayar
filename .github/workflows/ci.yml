@@ -44,13 +44,7 @@ jobs:
 
       - name: Install Tuist
         run: |
-          # Install Tuist using the official installation script
-          curl -Ls https://install.tuist.io | bash
-
-          # Add Tuist to PATH for this job
-          echo "/usr/local/bin" >> $GITHUB_PATH
-
-          # Verify installation
+          brew install tuist
           tuist version
 
       - name: Generate Tuist project
