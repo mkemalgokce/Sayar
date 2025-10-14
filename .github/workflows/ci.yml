@@ -13,10 +13,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: SwiftLint
-        uses: norio-nomura/action-swiftlint@3.2.1
-        with:
-          args: --strict
+      - name: Install SwiftLint
+        run: brew install swiftlint
+
+      - name: Run SwiftLint
+        run: swiftlint lint --strict
 
   format:
     runs-on: macos-latest
@@ -41,9 +42,14 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -switch /Applications/Xcode_26.0.app
 
-      - name: Install Tuist
+      - name: Install Mise
         run: |
-          curl -Ls https://install.tuist.io | bash
+          curl https://mise.run | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Install Tuist via Mise
+        run: |
+          mise install
 
       - name: Generate Tuist project
         run: |
@@ -74,4 +80,3 @@ jobs:
           name: codecov-sayar
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
-
