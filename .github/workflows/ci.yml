@@ -25,7 +25,9 @@ jobs:
             ${{ runner.os }}-brew-
 
       - name: Install SwiftLint
-        run: brew install swiftlint
+        run: |
+          brew install swiftlint
+          brew link --overwrite swiftlint
 
       - name: Run SwiftLint
         run: swiftlint lint --strict
@@ -50,6 +52,7 @@ jobs:
       - name: Install SwiftFormat
         run: |
           brew install swiftformat
+          brew link --overwrite swiftformat
 
       - name: Check SwiftFormat
         run: |
@@ -89,6 +92,7 @@ jobs:
       - name: Install Tuist
         run: |
           brew install tuist
+          brew link --overwrite tuist
           tuist version
 
       - name: Install dependencies

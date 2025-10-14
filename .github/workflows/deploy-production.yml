@@ -45,10 +45,12 @@ jobs:
       - name: Install git-cliff
         run: |
           brew install git-cliff
+          brew link --overwrite git-cliff
 
       - name: Install Tuist
         run: |
           brew install tuist
+          brew link --overwrite tuist
           tuist version
 
       - name: Install dependencies
