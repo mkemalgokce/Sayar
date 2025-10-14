@@ -55,7 +55,7 @@ jobs:
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
-          git-cliff --tag "v${VERSION}" --prepend CHANGELOG.md
+          git-cliff --unreleased --tag "v${VERSION}" --prepend CHANGELOG.md
 
       - name: Select Xcode version
         run: sudo xcode-select -switch /Applications/Xcode_26.0.app
