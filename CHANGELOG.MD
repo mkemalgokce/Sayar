@@ -21,6 +21,7 @@ All notable changes to this project will be documented in this file.
 - **ci**: Update uat pipeline
 - **ci**: Improve codecov upload and test reporting
 - **ci**: Update ci pipeline
+- **ci**: Add codecov support
 
 ### 🚜 Refactor
 
@@ -28,6 +29,7 @@ All notable changes to this project will be documented in this file.
 
 ### 📚 Documentation
 
+- Update CHANGELOG for unreleased changes [skip ci]
 - Update CHANGELOG for unreleased changes [skip ci]
 - Update CHANGELOG for unreleased changes [skip ci]
 - Update CHANGELOG for unreleased changes [skip ci]
