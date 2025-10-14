@@ -25,7 +25,7 @@ extension Target {
             sources: ["Sources/**"],
             resources: ["Resources/**"],
             dependencies: dependencies,
-            settings: .settings(base: Signing.automaticBase)
+            settings: .settings(base: Signing.manualBase)
         )
     }
 
