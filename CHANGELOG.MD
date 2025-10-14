@@ -17,7 +17,7 @@ All notable changes to this project will be documented in this file.
 - **ci**: Skip Firebase config copy during test action
 - **ci**: Add write permissions for CHANGELOG updates
 - **ci**: Update github actions workflow files
-<<<<<<< HEAD
+- **ci**: Update pipelines and signing
 
 ### 🚜 Refactor
 
@@ -26,39 +26,6 @@ All notable changes to this project will be documented in this file.
 ### 📚 Documentation
 
 - Update CHANGELOG for unreleased changes [skip ci]
-- Update CHANGELOG for unreleased changes [skip ci]
-- Update CHANGELOG for unreleased changes [skip ci]
-
-### ⚡ Performance
-
-- **ci**: Exclude build directories from linters
-- **ci**: Optimize linters and fix CI workflow
-- **ci**: Update ci workflow
-- **ci**: Update ci workflow
-
-## [Unreleased]
-
-### 🚀 Features
-
-- **ci**: Add Firebase config setup from GitHub Secrets
-
-### 🐛 Bug Fixes
-
-- **ci**: Update GitHub Actions workflow dependencies
-- **ci**: Add tuist install step before generate
-- **test**: Update tests
-- **ci**: Fix deploy workflows and GitHub token permissions
-- **ci**: Skip Firebase config copy during test action
-- **ci**: Add write permissions for CHANGELOG updates
-=======
->>>>>>> e4972fe (fix(ci): update pipelines and signing)
-
-### 🚜 Refactor
-
-- **tuist**: Add protocol-based module system
-
-### 📚 Documentation
-
 - Update CHANGELOG for unreleased changes [skip ci]
 - Update CHANGELOG for unreleased changes [skip ci]
 - Update CHANGELOG for unreleased changes [skip ci]
