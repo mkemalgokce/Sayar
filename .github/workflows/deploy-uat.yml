@@ -51,6 +51,13 @@ jobs:
         run: |
           tuist install
 
+      - name: Setup Firebase config
+        env:
+          FIREBASE_CONFIG_UAT: ${{ secrets.FIREBASE_CONFIG_UAT }}
+        run: |
+          mkdir -p App/Resources/Firebase
+          echo "$FIREBASE_CONFIG_UAT" | base64 --decode > App/Resources/Firebase/GoogleService-Info-UAT.plist
+
       - name: Generate Tuist project
         run: |
           tuist generate

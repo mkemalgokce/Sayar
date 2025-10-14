@@ -51,6 +51,13 @@ jobs:
         run: |
           tuist install
 
+      - name: Setup Firebase config for tests
+        env:
+          FIREBASE_CONFIG_DEV: ${{ secrets.FIREBASE_CONFIG_DEV }}
+        run: |
+          mkdir -p App/Resources/Firebase
+          echo "$FIREBASE_CONFIG_DEV" | base64 --decode > App/Resources/Firebase/GoogleService-Info-Dev.plist
+
       - name: Generate Tuist project
         run: |
           tuist generate
