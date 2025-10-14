@@ -62,34 +62,18 @@ jobs:
         run: |
           tuist generate
 
-      - name: Run tests
+      - name: Build and Test
         run: |
           xcodebuild test \
             -workspace Sayar.xcworkspace \
             -scheme "Sayar-Workspace-Dev" \
             -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
             -configuration Dev \
-            -resultBundlePath TestResults.xcresult \
-            -enableCodeCoverage YES
-
-      - name: Generate coverage report
-        run: |
-          xcrun xccov view --report --json TestResults.xcresult > coverage.json
-
-      - name: Upload test results
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: test-results
-          path: TestResults.xcresult
+            -enableCodeCoverage YES \
+            build test
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
-          files: coverage.json
-          flags: unittests
-          name: sayar-coverage
-          disable_search: true # <- ÖNEMLİ: boş *.coverage.txt’leri yok saysın
-          verbose: true # teşhis için
-          fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false

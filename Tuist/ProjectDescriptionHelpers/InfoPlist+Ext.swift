@@ -8,6 +8,8 @@ extension InfoPlist {
     public static let appInfoPlist: InfoPlist = .extendingDefault(with: [
         "CFBundleDisplayName": "$(PRODUCT_DISPLAY_NAME)",
         "CFBundleIdentifier": "$(PRODUCT_BUNDLE_IDENTIFIER)",
+        "CFBundleShortVersionString": "$(MARKETING_VERSION)",
+        "CFBundleVersion": "$(CURRENT_PROJECT_VERSION)",
         "UILaunchStoryboardName": "LaunchScreen",
         "UIApplicationSceneManifest": [
             "UIApplicationSupportsMultipleScenes": false,
