@@ -69,10 +69,25 @@ jobs:
             -scheme "Sayar Dev" \
             -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
             -configuration Dev \
-            -enableCodeCoverage YES \
-            -derivedDataPath DerivedData
+            -resultBundlePath TestResults.xcresult \
+            -enableCodeCoverage YES
+
+      - name: Generate coverage report
+        run: |
+          xcrun xccov view --report --json TestResults.xcresult > coverage.json
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: TestResults.xcresult
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
+          file: coverage.json
+          flags: unittests
+          name: sayar-coverage
+          fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
