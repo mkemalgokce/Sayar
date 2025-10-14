@@ -19,6 +19,8 @@ All notable changes to this project will be documented in this file.
 - **ci**: Update github actions workflow files
 - **ci**: Update pipelines and signing
 - **ci**: Update uat pipeline
+- **ci**: Improve codecov upload and test reporting
+- **ci**: Update ci pipeline
 
 ### 🚜 Refactor
 
@@ -26,6 +28,7 @@ All notable changes to this project will be documented in this file.
 
 ### 📚 Documentation
 
+- Update CHANGELOG for unreleased changes [skip ci]
 - Update CHANGELOG for unreleased changes [skip ci]
 - Update CHANGELOG for unreleased changes [skip ci]
 - Update CHANGELOG for unreleased changes [skip ci]
