@@ -108,25 +108,6 @@ jobs:
             -exportPath $RUNNER_TEMP/export \
             -exportOptionsPlist .github/deployment/ExportOptions-UAT.plist
 
-      - name: Upload dSYMs to Crashlytics
-        env:
-          GOOGLE_APPLICATION_CREDENTIALS_BASE64: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_BASE64 }}
-          FIREBASE_APP_ID_UAT: ${{ secrets.FIREBASE_APP_ID_UAT }}
-        run: |
-          # Install Firebase CLI
-          curl -sL https://firebase.tools | bash
-
-          # Setup Google credentials
-          echo "$GOOGLE_APPLICATION_CREDENTIALS_BASE64" | base64 --decode > $RUNNER_TEMP/google-credentials.json
-          export GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/google-credentials.json
-
-          # Find and upload dSYMs
-          DSYM_PATH=$RUNNER_TEMP/Sayar.xcarchive/dSYMs
-          if [ -d "$DSYM_PATH" ]; then
-            firebase crashlytics:symbols:upload "$DSYM_PATH" \
-              --app=$FIREBASE_APP_ID_UAT
-          fi
-
       - name: Upload to Firebase App Distribution
         env:
           GOOGLE_APPLICATION_CREDENTIALS_BASE64: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_BASE64 }}
