@@ -53,7 +53,7 @@ jobs:
 
       - name: Generate Tuist project
         run: |
-          tuist generate
+          mise exec -- tuist generate
 
       - name: Run tests
         run: |

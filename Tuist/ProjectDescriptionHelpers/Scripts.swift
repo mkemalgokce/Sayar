@@ -53,7 +53,9 @@ public enum BuildScripts {
 
             # Upload symbols
             echo "   Uploading dSYMs..."
-            "$UPLOAD_SCRIPT" -gsp "${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/GoogleService-Info.plist" -p ios "${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}"
+            GOOGLE_PLIST="${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/GoogleService-Info.plist"
+            DSYM_PATH="${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}"
+            "$UPLOAD_SCRIPT" -gsp "$GOOGLE_PLIST" -p ios "$DSYM_PATH"
 
             if [ $? -eq 0 ]; then
                 echo "✅ dSYMs uploaded successfully to Crashlytics"
