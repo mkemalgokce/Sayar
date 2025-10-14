@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [master, develop]
   pull_request:
-    branches: [main, develop]
+    branches: [master, develop]
 
 jobs:
   lint:
@@ -12,6 +12,17 @@ jobs:
     name: SwiftLint
     steps:
       - uses: actions/checkout@v4
+
+      - name: Cache Homebrew
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/Homebrew
+            /opt/homebrew/Cellar/swiftlint
+          key: ${{ runner.os }}-brew-swiftlint-${{ hashFiles('.github/workflows/ci.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-brew-swiftlint-
+            ${{ runner.os }}-brew-
 
       - name: Install SwiftLint
         run: brew install swiftlint
@@ -24,6 +35,17 @@ jobs:
     name: SwiftFormat
     steps:
       - uses: actions/checkout@v4
+
+      - name: Cache Homebrew
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/Homebrew
+            /opt/homebrew/Cellar/swiftformat
+          key: ${{ runner.os }}-brew-swiftformat-${{ hashFiles('.github/workflows/ci.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-brew-swiftformat-
+            ${{ runner.os }}-brew-
 
       - name: Install SwiftFormat
         run: |
@@ -41,6 +63,28 @@ jobs:
 
       - name: Select Xcode
         run: sudo xcode-select -switch /Applications/Xcode_26.0.app
+
+      - name: Cache Tuist
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.tuist
+            Tuist/.build
+          key: ${{ runner.os }}-tuist-${{ hashFiles('**/Project.swift', 'Tuist/Package.swift') }}
+          restore-keys: |
+            ${{ runner.os }}-tuist-
+
+      - name: Cache Homebrew
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/Homebrew
+            /opt/homebrew/Cellar/tuist
+            /opt/homebrew/Cellar/xcbeautify
+          key: ${{ runner.os }}-brew-test-${{ hashFiles('.github/workflows/ci.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-brew-test-
+            ${{ runner.os }}-brew-
 
       - name: Install Tuist
         run: |
