@@ -1,0 +1,18 @@
+coverage:
+  status:
+    project:
+      default:
+        target: 70%
+        informational: true
+    patch:
+      default:
+        target: auto
+        threshold: 2%
+        informational: true
+
+# xccov JSON içindeki MUTLAK path'leri repo köküne indir
+fixes:
+  - "/Users/runner/work/.*/.*/::"
+# (İsteğe bağlı) test dosyalarını listeden çıkar
+# ignore:
+#   - "**/*Tests.swift"

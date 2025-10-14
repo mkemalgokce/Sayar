@@ -66,7 +66,7 @@ jobs:
         run: |
           xcodebuild test \
             -workspace Sayar.xcworkspace \
-            -scheme "Sayar Dev" \
+            -scheme "Sayar-Workspace-Dev" \
             -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
             -configuration Dev \
             -resultBundlePath TestResults.xcresult \
@@ -86,8 +86,10 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
-          file: coverage.json
+          files: coverage.json
           flags: unittests
           name: sayar-coverage
+          disable_search: true # <- ÖNEMLİ: boş *.coverage.txt’leri yok saysın
+          verbose: true # teşhis için
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
