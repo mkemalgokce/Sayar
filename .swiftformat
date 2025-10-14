@@ -2,6 +2,7 @@
 
 --symlinks ignore
 --swiftversion 6.2
+--exclude Tuist/.build,Tuist/Dependencies,.build,DerivedData,export,Pods
 
 # format options
 --maxwidth 120

@@ -9,3 +9,12 @@ disabled_rules:
   - force_cast
   - operator_whitespace
   - type_name
+
+excluded:
+  - Tuist/.build
+  - Tuist/Dependencies
+  - .build
+  - DerivedData
+  - export
+  - Pods
+  - vendor
