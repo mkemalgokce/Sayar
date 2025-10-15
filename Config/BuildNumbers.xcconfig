@@ -8,4 +8,4 @@ CURRENT_PROJECT_VERSION_DEV = 1
 CURRENT_PROJECT_VERSION_UAT = 2
 
 // Prod build number (reset on new version tag, incremented on same tag rebuilds)
-CURRENT_PROJECT_VERSION_PROD = 2
+CURRENT_PROJECT_VERSION_PROD = 3
