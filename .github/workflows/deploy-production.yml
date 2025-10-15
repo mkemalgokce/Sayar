@@ -2,8 +2,8 @@ name: Deploy to Production
 
 on:
   push:
-    branches:
-      - master
+    tags:
+      - 'v*.*.*'
   workflow_dispatch:
 
 permissions:
@@ -69,12 +69,51 @@ jobs:
         run: |
           tuist generate
 
-      - name: Get version from project
+      - name: Get version from tag
         id: version
         run: |
-          VERSION=$(xcodebuild -workspace Sayar.xcworkspace -scheme "Sayar Prod" -showBuildSettings | grep MARKETING_VERSION | awk '{print $3}' | head -n 1)
+          # Extract version from tag (v1.2.3 -> 1.2.3)
+          VERSION=${GITHUB_REF#refs/tags/v}
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "📦 Version: $VERSION"
+          echo "📦 Version from tag: $VERSION"
+
+          # Validate semantic versioning format
+          if ! [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "❌ Invalid version format: $VERSION"
+            echo "   Expected format: v1.2.3 (semantic versioning)"
+            exit 1
+          fi
+
+          echo "✅ Version format validated"
+
+      - name: Validate CHANGELOG and check for changes
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          # Check if there are unreleased changes
+          UNRELEASED_CHANGES=$(git-cliff --unreleased --strip all)
+
+          if [ -z "$UNRELEASED_CHANGES" ]; then
+            echo "❌ No unreleased changes found in CHANGELOG"
+            echo "   Cannot create release without changes"
+            echo "   Please make sure you have commits since the last release"
+            exit 1
+          fi
+
+          echo "✅ Found unreleased changes:"
+          echo "$UNRELEASED_CHANGES"
+
+      - name: Check if tag already deployed to TestFlight
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          # Check if CHANGELOG already contains this version
+          if grep -q "## \[${VERSION}\]" CHANGELOG.md 2>/dev/null; then
+            echo "⚠️  Warning: Version ${VERSION} already exists in CHANGELOG"
+            echo "   This might be a re-deployment or the tag was created before"
+          else
+            echo "✅ Version ${VERSION} is new"
+          fi
 
       - name: Generate CHANGELOG content
         env:
@@ -154,7 +193,7 @@ jobs:
           xcrun altool --upload-app -f $RUNNER_TEMP/export/Sayar.ipa -t ios --apiKey $APP_STORE_CONNECT_API_KEY_ID --apiIssuer $APP_STORE_CONNECT_ISSUER_ID --use-old-altool
           echo "✅ TestFlight upload successful"
 
-      - name: Commit CHANGELOG and create tag after successful deployment
+      - name: Commit CHANGELOG after successful deployment
         if: success()
         env:
           VERSION: ${{ steps.version.outputs.version }}
@@ -163,11 +202,9 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add CHANGELOG.md
           if ! git diff --staged --quiet; then
-            git commit -m "chore(release): prepare v${VERSION} [skip ci]"
-            git tag -a "v${VERSION}" -m "Release v${VERSION}"
-            git push origin master || echo "⚠️ Failed to push CHANGELOG, but deployment was successful"
-            git push origin "v${VERSION}" || echo "⚠️ Failed to push tag, but deployment was successful"
-            echo "✅ CHANGELOG and tag v${VERSION} created"
+            git commit -m "chore(release): update CHANGELOG for v${VERSION} [skip ci]"
+            git push origin HEAD:master || echo "⚠️ Failed to push CHANGELOG, but deployment was successful"
+            echo "✅ CHANGELOG updated for v${VERSION}"
           else
             echo "ℹ️ No CHANGELOG changes to commit"
           fi
