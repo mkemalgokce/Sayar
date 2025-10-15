@@ -284,6 +284,34 @@ jobs:
             echo "ℹ️ No changes to commit"
           fi
 
+      - name: Update marketing version in develop branch
+        if: success() && steps.version_check.outputs.is_rebuild == 'false'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          # Fetch latest develop branch
+          git fetch origin develop:develop
+
+          # Checkout develop branch
+          git checkout develop
+
+          # Update marketing version in Base.xcconfig
+          sed -i '' "s/MARKETING_VERSION = .*/MARKETING_VERSION = $VERSION/" Config/Base.xcconfig
+
+          # Configure git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Commit and push if there are changes
+          git add Config/Base.xcconfig
+          if ! git diff --staged --quiet; then
+            git commit -m "chore(version): update marketing version to $VERSION [skip ci]"
+            git push origin develop || echo "⚠️ Failed to push version update to develop"
+            echo "✅ Marketing version updated to $VERSION in develop branch"
+          else
+            echo "ℹ️ Marketing version already up to date in develop"
+          fi
+
       - name: Clean up keychain
         if: always()
         run: |
