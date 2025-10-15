@@ -41,7 +41,13 @@ jobs:
 
       - name: Generate release notes
         run: |
-          git-cliff --unreleased > $RUNNER_TEMP/release-notes.txt
+          # Generate plain text release notes for Firebase (no Markdown)
+          git-cliff --config cliff-firebase.toml --unreleased --strip all > $RUNNER_TEMP/release-notes.txt
+
+          # Check if release notes are empty
+          if [ ! -s $RUNNER_TEMP/release-notes.txt ] || [ $(wc -l < $RUNNER_TEMP/release-notes.txt) -lt 2 ]; then
+            echo "Bug fixes and improvements." > $RUNNER_TEMP/release-notes.txt
+          fi
 
       - name: Select Xcode version
         run: sudo xcode-select -switch /Applications/Xcode_26.0.app
@@ -82,16 +88,16 @@ jobs:
       - name: Get and prepare build number
         id: build_number
         run: |
-          # Get current build number
-          CURRENT_BUILD=$(xcodebuild -workspace Sayar.xcworkspace -scheme "Sayar UAT" -showBuildSettings 2>/dev/null | grep CURRENT_PROJECT_VERSION | awk '{print $3}' | head -n 1)
+          # Get current UAT build number
+          CURRENT_BUILD=$(grep "CURRENT_PROJECT_VERSION_UAT" Config/BuildNumbers.xcconfig | awk '{print $3}')
           NEW_BUILD=$(expr $CURRENT_BUILD + 1)
 
-          # Update build number in Base.xcconfig (don't commit yet)
-          sed -i '' "s/CURRENT_PROJECT_VERSION = .*/CURRENT_PROJECT_VERSION = $NEW_BUILD/" Config/Base.xcconfig
+          # Update UAT build number in BuildNumbers.xcconfig (don't commit yet)
+          sed -i '' "s/CURRENT_PROJECT_VERSION_UAT = .*/CURRENT_PROJECT_VERSION_UAT = $NEW_BUILD/" Config/BuildNumbers.xcconfig
 
           echo "current_build=$CURRENT_BUILD" >> $GITHUB_OUTPUT
           echo "new_build=$NEW_BUILD" >> $GITHUB_OUTPUT
-          echo "📦 Build number prepared: $CURRENT_BUILD -> $NEW_BUILD"
+          echo "📦 UAT Build number: $CURRENT_BUILD -> $NEW_BUILD"
 
       - name: Create temporary keychain
         env:
@@ -179,10 +185,10 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Config/Base.xcconfig
+          git add Config/BuildNumbers.xcconfig
           git commit -m "chore(uat): bump build number to $NEW_BUILD [skip ci]"
           git push origin develop || echo "⚠️ Failed to push build number, but deployment was successful"
-          echo "✅ Build number committed: $NEW_BUILD"
+          echo "✅ UAT Build number committed: $NEW_BUILD"
 
       - name: Clean up keychain
         if: always()

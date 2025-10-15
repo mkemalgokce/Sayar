@@ -1,0 +1,11 @@
+// Build Numbers for each environment
+// Auto-incremented by CI/CD workflows
+
+// Dev build number (incremented on every develop push)
+CURRENT_PROJECT_VERSION_DEV = 1
+
+// UAT build number (incremented on UAT deployment)
+CURRENT_PROJECT_VERSION_UAT = 1
+
+// Prod build number (reset on new version tag, incremented on same tag rebuilds)
+CURRENT_PROJECT_VERSION_PROD = 1

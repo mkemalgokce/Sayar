@@ -1,5 +1,6 @@
 // Prod Configuration
 #include "Base.xcconfig"
+#include "BuildNumbers.xcconfig"
 
 // Bundle Identifier
 PRODUCT_BUNDLE_IDENTIFIER = com.mkg.sayar.prod
@@ -28,6 +29,9 @@ API_TIMEOUT = 60
 
 // App Icon
 ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon
+
+// Build Number
+CURRENT_PROJECT_VERSION = $(CURRENT_PROJECT_VERSION_PROD)
 
 // Code Signing
 CODE_SIGN_IDENTITY = Apple Distribution

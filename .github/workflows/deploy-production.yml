@@ -119,7 +119,55 @@ jobs:
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
+          # Generate full CHANGELOG (all commits)
           git-cliff --unreleased --tag "v${VERSION}" --prepend CHANGELOG.md
+
+          # Generate GitHub release notes (Markdown, only important commits)
+          git-cliff --config cliff-release.toml --unreleased --tag "v${VERSION}" --strip all > $RUNNER_TEMP/release-notes.md
+
+          # Check if release notes are empty
+          if [ ! -s $RUNNER_TEMP/release-notes.md ] || [ $(wc -l < $RUNNER_TEMP/release-notes.md) -lt 2 ]; then
+            echo "No significant user-facing changes in this release." > $RUNNER_TEMP/release-notes.md
+          fi
+
+      - name: Check if this is a new version or rebuild
+        id: version_check
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          # Check if this version was already released
+          if grep -q "## \[${VERSION}\]" CHANGELOG.md 2>/dev/null; then
+            echo "is_rebuild=true" >> $GITHUB_OUTPUT
+            echo "⚠️  Version ${VERSION} already exists - this is a REBUILD"
+          else
+            echo "is_rebuild=false" >> $GITHUB_OUTPUT
+            echo "✅ New version ${VERSION}"
+          fi
+
+      - name: Get and prepare build number
+        id: build_number
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          IS_REBUILD: ${{ steps.version_check.outputs.is_rebuild }}
+        run: |
+          # Get current Prod build number
+          CURRENT_BUILD=$(grep "CURRENT_PROJECT_VERSION_PROD" Config/BuildNumbers.xcconfig | awk '{print $3}')
+
+          if [ "$IS_REBUILD" == "true" ]; then
+            # Same version, increment build number
+            NEW_BUILD=$(expr $CURRENT_BUILD + 1)
+            echo "📦 Rebuild detected - incrementing build: $CURRENT_BUILD -> $NEW_BUILD"
+          else
+            # New version, reset build number to 1
+            NEW_BUILD=1
+            echo "📦 New version - resetting build number to 1"
+          fi
+
+          # Update Prod build number in BuildNumbers.xcconfig
+          sed -i '' "s/CURRENT_PROJECT_VERSION_PROD = .*/CURRENT_PROJECT_VERSION_PROD = $NEW_BUILD/" Config/BuildNumbers.xcconfig
+
+          echo "current_build=$CURRENT_BUILD" >> $GITHUB_OUTPUT
+          echo "new_build=$NEW_BUILD" >> $GITHUB_OUTPUT
 
       - name: Select Xcode version
         run: sudo xcode-select -switch /Applications/Xcode_26.0.app
@@ -193,20 +241,47 @@ jobs:
           xcrun altool --upload-app -f $RUNNER_TEMP/export/Sayar.ipa -t ios --apiKey $APP_STORE_CONNECT_API_KEY_ID --apiIssuer $APP_STORE_CONNECT_ISSUER_ID --use-old-altool
           echo "✅ TestFlight upload successful"
 
-      - name: Commit CHANGELOG after successful deployment
+      - name: Create GitHub Release
         if: success()
         env:
           VERSION: ${{ steps.version.outputs.version }}
+          BUILD: ${{ steps.build_number.outputs.new_build }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Check if release already exists
+          if gh release view "v${VERSION}" &>/dev/null; then
+            echo "ℹ️ Release v${VERSION} already exists - updating notes"
+            gh release edit "v${VERSION}" \
+              --notes-file $RUNNER_TEMP/release-notes.md \
+              --title "v${VERSION} (Build ${BUILD})"
+          else
+            echo "✅ Creating new release v${VERSION}"
+            gh release create "v${VERSION}" \
+              --notes-file $RUNNER_TEMP/release-notes.md \
+              --title "v${VERSION}" \
+              --target master
+          fi
+
+          echo "✅ GitHub Release created/updated for v${VERSION}"
+
+      - name: Commit CHANGELOG and build number after successful deployment
+        if: success()
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          BUILD: ${{ steps.build_number.outputs.new_build }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add CHANGELOG.md
+
+          # Add both CHANGELOG and BuildNumbers.xcconfig
+          git add CHANGELOG.md Config/BuildNumbers.xcconfig
+
           if ! git diff --staged --quiet; then
-            git commit -m "chore(release): update CHANGELOG for v${VERSION} [skip ci]"
-            git push origin HEAD:master || echo "⚠️ Failed to push CHANGELOG, but deployment was successful"
-            echo "✅ CHANGELOG updated for v${VERSION}"
+            git commit -m "chore(release): update CHANGELOG and build number for v${VERSION} (Build ${BUILD}) [skip ci]"
+            git push origin HEAD:master || echo "⚠️ Failed to push changes, but deployment was successful"
+            echo "✅ CHANGELOG and build number updated for v${VERSION} (Build ${BUILD})"
           else
-            echo "ℹ️ No CHANGELOG changes to commit"
+            echo "ℹ️ No changes to commit"
           fi
 
       - name: Clean up keychain
