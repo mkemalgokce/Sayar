@@ -257,7 +257,7 @@ jobs:
             exit 1
           fi
 
-      - name: Update CHANGELOG and build number after successful deployment
+      - name: Commit build number after successful deployment
         if: success()
         env:
           NEW_BUILD: ${{ steps.build_number.outputs.new_build }}
@@ -276,20 +276,17 @@ jobs:
             exit 1
           }
 
-          # Generate updated CHANGELOG after rebase
-          git-cliff --config .github/cliff/cliff.toml --unreleased --output CHANGELOG.md
-
-          # Add both CHANGELOG and BuildNumbers.xcconfig
-          git add CHANGELOG.md Config/BuildNumbers.xcconfig
+          # Add BuildNumbers.xcconfig only
+          git add Config/BuildNumbers.xcconfig
 
           # Commit if there are changes
           if ! git diff --staged --quiet; then
-            git commit -m "chore(uat): update CHANGELOG and bump build number to $NEW_BUILD [skip ci]"
+            git commit -m "chore(uat): bump build number to $NEW_BUILD [skip ci]"
 
             # Push with retry logic
             for i in {1..3}; do
               if git push origin develop; then
-                echo "✅ CHANGELOG and UAT build number committed: $NEW_BUILD"
+                echo "✅ UAT build number committed: $NEW_BUILD"
                 break
               else
                 echo "⚠️ Push failed, retrying ($i/3)..."
