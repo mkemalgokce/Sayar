@@ -303,9 +303,9 @@ jobs:
 
           # Fetch latest master to avoid conflicts
           git fetch origin master
-          git rebase origin/master || {
+          git -c rebase.autoStash=true rebase origin/master || {
             echo "❌ Failed to rebase with remote changes"
-            git rebase --abort
+            git rebase --abort || true
             exit 1
           }
 
@@ -324,7 +324,7 @@ jobs:
                 echo "⚠️ Push failed, retrying ($i/3)..."
                 sleep 2
                 git fetch origin master
-                git rebase origin/master
+                git -c rebase.autoStash=true rebase origin/master
               fi
 
               if [ $i -eq 3 ]; then
@@ -368,7 +368,7 @@ jobs:
                 echo "⚠️ Push failed, retrying ($i/3)..."
                 sleep 2
                 git fetch origin develop
-                git rebase origin/develop
+                git -c rebase.autoStash=true rebase origin/develop
               fi
 
               if [ $i -eq 3 ]; then
