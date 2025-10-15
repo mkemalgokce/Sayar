@@ -91,7 +91,7 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           # Check if there are unreleased changes
-          UNRELEASED_CHANGES=$(git-cliff --unreleased --strip all)
+          UNRELEASED_CHANGES=$(git-cliff --config .github/cliff/cliff.toml --unreleased --strip all)
 
           if [ -z "$UNRELEASED_CHANGES" ]; then
             echo "❌ No unreleased changes found in CHANGELOG"
@@ -120,10 +120,10 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           # Generate full CHANGELOG (all commits)
-          git-cliff --unreleased --tag "v${VERSION}" --prepend CHANGELOG.md
+          git-cliff --config .github/cliff/cliff.toml --unreleased --tag "v${VERSION}" --prepend CHANGELOG.md
 
           # Generate GitHub release notes (Markdown, only important commits)
-          git-cliff --config cliff-release.toml --unreleased --tag "v${VERSION}" --strip all > $RUNNER_TEMP/release-notes.md
+          git-cliff --config .github/cliff/cliff-release.toml --unreleased --tag "v${VERSION}" --strip all > $RUNNER_TEMP/release-notes.md
 
           # Check if release notes are empty
           if [ ! -s $RUNNER_TEMP/release-notes.md ] || [ $(wc -l < $RUNNER_TEMP/release-notes.md) -lt 2 ]; then

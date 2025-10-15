@@ -42,7 +42,7 @@ jobs:
       - name: Generate release notes
         run: |
           # Generate plain text release notes for Firebase (no Markdown)
-          git-cliff --config cliff-firebase.toml --unreleased --strip all > $RUNNER_TEMP/release-notes.txt
+          git-cliff --config .github/cliff/cliff-firebase.toml --unreleased --strip all > $RUNNER_TEMP/release-notes.txt
 
           # Check if release notes are empty
           if [ ! -s $RUNNER_TEMP/release-notes.txt ] || [ $(wc -l < $RUNNER_TEMP/release-notes.txt) -lt 2 ]; then
@@ -169,7 +169,7 @@ jobs:
       - name: Update CHANGELOG after successful deployment
         if: success()
         run: |
-          git cliff --unreleased --output CHANGELOG.md
+          git-cliff --config .github/cliff/cliff.toml --unreleased --output CHANGELOG.md
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add CHANGELOG.md

@@ -64,6 +64,7 @@ commit_parsers = [
   { body = ".*\\[skip ci\\].*", skip = true },
   { message = "^chore\\(release\\): prepare", skip = true },
   { message = "^chore\\(release\\): update CHANGELOG", skip = true },
+  { message = "^chore\\(version\\): update marketing version", skip = true },
   { message = "^chore\\(uat\\): bump build number", skip = true },
   { message = "^chore\\(dev\\): bump build number", skip = true },
   { message = "^docs: update CHANGELOG.*", skip = true },
