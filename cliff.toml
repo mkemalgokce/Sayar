@@ -56,10 +56,39 @@ commit_parsers = [
   { message = "^refactor", group = "<!-- 2 -->🚜 Refactor" },
   { message = "^style", group = "<!-- 5 -->🎨 Styling" },
   { message = "^test", group = "<!-- 6 -->🧪 Testing" },
-  { message = "^chore\\(release\\): prepare for", skip = true },
+
+  # Skip CI/CD and automation commits (must be first to catch [skip ci])
+  { message = ".*\\[skip ci\\].*", skip = true },
+  { body = ".*\\[skip ci\\].*", skip = true },
+  { message = "^chore\\(release\\): prepare", skip = true },
+  { message = "^chore\\(release\\): update CHANGELOG", skip = true },
+  { message = "^chore\\(uat\\): bump build number", skip = true },
+  { message = "^chore\\(dev\\): bump build number", skip = true },
+  { message = "^docs: update CHANGELOG.*", skip = true },
+  { message = "^Update CHANGELOG.*", skip = true },
+
+  # Skip dependency updates
   { message = "^chore\\(deps.*\\)", skip = true },
+  { message = "^build\\(deps.*\\)", skip = true },
+
+  # Skip PR/merge commits
   { message = "^chore\\(pr\\)", skip = true },
   { message = "^chore\\(pull\\)", skip = true },
+  { message = "^Merge pull request", skip = true },
+  { message = "^Merge branch", skip = true },
+
+  # Skip formatting commits
+  { message = "^style: format code", skip = true },
+  { message = "^style: run swiftformat", skip = true },
+  { message = "^style: run swiftlint", skip = true },
+  { message = ".*SwiftFormat.*", skip = true },
+  { message = ".*SwiftLint.*", skip = true },
+
+  # Skip minor/internal changes
+  { message = "^chore: update.*", skip = true },
+  { message = "^ci: update.*", skip = true },
+
+  # Group remaining commits
   { message = "^chore|^ci", group = "<!-- 7 -->⚙️ Miscellaneous Tasks" },
   { body = ".*security", group = "<!-- 8 -->🛡️ Security" },
   { message = "^revert", group = "<!-- 9 -->◀️ Revert" },
