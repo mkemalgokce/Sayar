@@ -106,15 +106,15 @@ jobs:
 
           echo "✅ Version format validated"
 
-      - name: Validate CHANGELOG and check for changes
+      - name: Validate unreleased changes
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
-          # Check if there are unreleased changes
+          # Check if there are unreleased changes in git history
           UNRELEASED_CHANGES=$(git-cliff --config .github/cliff/cliff.toml --unreleased --strip all)
 
           if [ -z "$UNRELEASED_CHANGES" ]; then
-            echo "❌ No unreleased changes found in CHANGELOG"
+            echo "❌ No unreleased changes found in git history"
             echo "   Cannot create release without changes"
             echo "   Please make sure you have commits since the last release"
             exit 1
@@ -123,30 +123,17 @@ jobs:
           echo "✅ Found unreleased changes:"
           echo "$UNRELEASED_CHANGES"
 
-      - name: Check if tag already deployed to TestFlight
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          # Check if CHANGELOG already contains this version
-          if grep -q "## \[${VERSION}\]" CHANGELOG.md 2>/dev/null; then
-            echo "⚠️  Warning: Version ${VERSION} already exists in CHANGELOG"
-            echo "   This might be a re-deployment or the tag was created before"
-          else
-            echo "✅ Version ${VERSION} is new"
-          fi
-
       - name: Check if this is a new version or rebuild
         id: version_check
         env:
           VERSION: ${{ steps.version.outputs.version }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -e
-          # Check remote CHANGELOG on master branch to determine if this is a rebuild
-          git fetch origin master
-
-          if git show origin/master:CHANGELOG.md 2>/dev/null | grep -q "## \[${VERSION}\]"; then
+          # Check if GitHub Release already exists to determine if this is a rebuild
+          if gh release view "v${VERSION}" &>/dev/null; then
             echo "is_rebuild=true" >> $GITHUB_OUTPUT
-            echo "⚠️  Version ${VERSION} already exists in remote CHANGELOG - this is a REBUILD"
+            echo "⚠️  Version ${VERSION} already has a GitHub Release - this is a REBUILD"
           else
             echo "is_rebuild=false" >> $GITHUB_OUTPUT
             echo "✅ New version ${VERSION}"
@@ -302,7 +289,7 @@ jobs:
 
           echo "✅ GitHub Release created/updated for v${VERSION}"
 
-      - name: Commit CHANGELOG and build number after successful deployment
+      - name: Commit build number after successful deployment
         if: success()
         env:
           VERSION: ${{ steps.version.outputs.version }}
@@ -322,19 +309,16 @@ jobs:
             exit 1
           }
 
-          # NOW generate CHANGELOG after successful deployment
-          git-cliff --config .github/cliff/cliff.toml --unreleased --tag "v${VERSION}" --prepend CHANGELOG.md
-
-          # Add both CHANGELOG and BuildNumbers.xcconfig
-          git add CHANGELOG.md Config/BuildNumbers.xcconfig
+          # Add BuildNumbers.xcconfig only
+          git add Config/BuildNumbers.xcconfig
 
           if ! git diff --staged --quiet; then
-            git commit -m "chore(release): update CHANGELOG and build number for v${VERSION} (Build ${BUILD}) [skip ci]"
+            git commit -m "chore(release): bump build number to ${BUILD} for v${VERSION} [skip ci]"
 
             # Push with retry logic
             for i in {1..3}; do
               if git push origin HEAD:master; then
-                echo "✅ CHANGELOG and build number updated for v${VERSION} (Build ${BUILD})"
+                echo "✅ Build number updated for v${VERSION} (Build ${BUILD})"
                 break
               else
                 echo "⚠️ Push failed, retrying ($i/3)..."

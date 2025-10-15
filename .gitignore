@@ -270,3 +270,7 @@ Tuist/Dependencies/graph.json
 .claude/
 *.p12
 ./minio
+
+# CHANGELOG is not tracked - use GitHub Releases and git history instead
+CHANGELOG.md
+CHANGELOG.MD
