@@ -9,8 +9,19 @@ on:
 permissions:
   contents: write
 
+# Prevent concurrent deployments
+concurrency:
+  group: deploy-uat
+  cancel-in-progress: false
+
 jobs:
+  # Run CI checks before deployment
+  ci-checks:
+    uses: ./.github/workflows/ci.yml
+    secrets: inherit
+
   deploy:
+    needs: ci-checks
     runs-on: macos-26
 
     steps:
@@ -151,6 +162,8 @@ jobs:
           GOOGLE_APPLICATION_CREDENTIALS_BASE64: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_BASE64 }}
           FIREBASE_APP_ID_UAT: ${{ secrets.FIREBASE_APP_ID_UAT }}
         run: |
+          set -e  # Exit on any error
+
           # Install Firebase CLI if not already installed
           curl -sL https://firebase.tools | bash
 
@@ -159,27 +172,37 @@ jobs:
           export GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/google-credentials.json
 
           # Upload to Firebase App Distribution
-          firebase appdistribution:distribute $RUNNER_TEMP/export/Sayar.ipa \
+          if firebase appdistribution:distribute $RUNNER_TEMP/export/Sayar.ipa \
             --app $FIREBASE_APP_ID_UAT \
             --groups "uat-testers" \
-            --release-notes-file $RUNNER_TEMP/release-notes.txt
-
-          echo "✅ Firebase upload successful"
+            --release-notes-file $RUNNER_TEMP/release-notes.txt; then
+            echo "✅ Firebase upload successful"
+          else
+            echo "❌ Firebase upload failed"
+            exit 1
+          fi
 
       - name: Update CHANGELOG and build number after successful deployment
         if: success()
         env:
           NEW_BUILD: ${{ steps.build_number.outputs.new_build }}
         run: |
-          # Generate updated CHANGELOG
-          git-cliff --config .github/cliff/cliff.toml --unreleased --output CHANGELOG.md
+          set -e  # Exit on error
 
           # Configure git
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Pull latest changes to avoid conflicts
-          git pull --rebase origin develop || echo "⚠️ Pull failed, will try to push anyway"
+          # Pull latest changes with rebase to avoid conflicts
+          git fetch origin develop
+          git rebase origin/develop || {
+            echo "❌ Failed to rebase with remote changes"
+            git rebase --abort
+            exit 1
+          }
+
+          # Generate updated CHANGELOG after rebase
+          git-cliff --config .github/cliff/cliff.toml --unreleased --output CHANGELOG.md
 
           # Add both CHANGELOG and BuildNumbers.xcconfig
           git add CHANGELOG.md Config/BuildNumbers.xcconfig
@@ -187,8 +210,23 @@ jobs:
           # Commit if there are changes
           if ! git diff --staged --quiet; then
             git commit -m "chore(uat): update CHANGELOG and bump build number to $NEW_BUILD [skip ci]"
-            git push origin develop || echo "⚠️ Failed to push changes, but deployment was successful"
-            echo "✅ CHANGELOG and UAT build number committed: $NEW_BUILD"
+
+            # Push with retry logic
+            for i in {1..3}; do
+              if git push origin develop; then
+                echo "✅ CHANGELOG and UAT build number committed: $NEW_BUILD"
+                break
+              else
+                echo "⚠️ Push failed, retrying ($i/3)..."
+                sleep 2
+                git pull --rebase origin develop
+              fi
+
+              if [ $i -eq 3 ]; then
+                echo "❌ Failed to push after 3 attempts"
+                exit 1
+              fi
+            done
           else
             echo "ℹ️ No changes to commit"
           fi
