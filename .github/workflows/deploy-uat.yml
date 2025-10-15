@@ -15,13 +15,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Run CI checks before deployment
-  ci-checks:
-    uses: ./.github/workflows/ci.yml
-    secrets: inherit
-
   deploy:
-    needs: ci-checks
     runs-on: macos-26
 
     steps:
@@ -30,6 +24,87 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Run CI checks before deployment
+      - name: Cache SwiftLint
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/Homebrew
+            /opt/homebrew/Cellar/swiftlint
+          key: ${{ runner.os }}-brew-swiftlint-${{ hashFiles('.github/workflows/deploy-uat.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-brew-swiftlint-
+            ${{ runner.os }}-brew-
+
+      - name: Run SwiftLint
+        run: |
+          brew install swiftlint
+          brew link --overwrite swiftlint
+          swiftlint lint --strict
+
+      - name: Cache SwiftFormat
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/Homebrew
+            /opt/homebrew/Cellar/swiftformat
+          key: ${{ runner.os }}-brew-swiftformat-${{ hashFiles('.github/workflows/deploy-uat.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-brew-swiftformat-
+            ${{ runner.os }}-brew-
+
+      - name: Check SwiftFormat
+        run: |
+          brew install swiftformat
+          brew link --overwrite swiftformat
+          swiftformat --lint .
+
+      - name: Cache Tuist for tests
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.tuist
+            Tuist/.build
+          key: ${{ runner.os }}-tuist-test-${{ hashFiles('**/Project.swift', 'Tuist/Package.swift') }}
+          restore-keys: |
+            ${{ runner.os }}-tuist-test-
+            ${{ runner.os }}-tuist-
+
+      - name: Run Unit Tests
+        run: |
+          # Select Xcode
+          sudo xcode-select -switch /Applications/Xcode_26.0.app
+
+          # Install Tuist if not cached
+          brew install tuist
+          tuist version
+
+          # Install dependencies
+          tuist install
+
+          # Setup Firebase config for tests
+          mkdir -p App/Resources/Firebase
+          echo "${{ secrets.FIREBASE_CONFIG_DEV }}" | base64 --decode > App/Resources/Firebase/GoogleService-Info-Dev.plist
+
+          # Generate project
+          tuist generate
+
+          # Run tests
+          set -o pipefail
+          xcodebuild test \
+            -workspace Sayar.xcworkspace \
+            -scheme "Sayar-Workspace-Dev" \
+            -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
+            -configuration Dev \
+            build test | xcbeautify || brew install xcbeautify && xcodebuild test \
+            -workspace Sayar.xcworkspace \
+            -scheme "Sayar-Workspace-Dev" \
+            -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
+            -configuration Dev \
+            build test | xcbeautify
+
+          echo "✅ All CI checks passed"
 
       - name: Cache Homebrew
         uses: actions/cache@v4
