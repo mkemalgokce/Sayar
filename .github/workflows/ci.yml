@@ -121,20 +121,8 @@ jobs:
             -resultBundlePath TestResults.xcresult \
             build test | xcbeautify
 
-      - name: Convert coverage to lcov format
-        run: |
-          xcrun xccov view --report --json TestResults.xcresult > coverage.json
-
-          # Install xcov-to-generic
-          brew install a7ex/homebrew-formulae/xcresultparser
-
-          # Convert to lcov format
-          xcresultparser --output-format cobertura TestResults.xcresult > coverage.xml
-
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage.xml
           fail_ci_if_error: false
-          verbose: true
