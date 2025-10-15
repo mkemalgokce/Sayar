@@ -26,7 +26,7 @@ ENABLE_DEBUG_MENU = NO
 ENABLE_ANALYTICS = YES
 API_TIMEOUT = 60
 
-// App Icon (base icon, not modified)
+// App Icon
 ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon
 
 // Code Signing
