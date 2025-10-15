@@ -166,29 +166,32 @@ jobs:
 
           echo "✅ Firebase upload successful"
 
-      - name: Update CHANGELOG after successful deployment
-        if: success()
-        run: |
-          git-cliff --config .github/cliff/cliff.toml --unreleased --output CHANGELOG.md
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add CHANGELOG.md
-          if ! git diff --staged --quiet; then
-            git commit -m "docs: update CHANGELOG for unreleased changes [skip ci]"
-            git push origin develop || echo "⚠️ Failed to push CHANGELOG, but deployment was successful"
-          fi
-
-      - name: Commit build number after successful deployment
+      - name: Update CHANGELOG and build number after successful deployment
         if: success()
         env:
           NEW_BUILD: ${{ steps.build_number.outputs.new_build }}
         run: |
+          # Generate updated CHANGELOG
+          git-cliff --config .github/cliff/cliff.toml --unreleased --output CHANGELOG.md
+
+          # Configure git
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Config/BuildNumbers.xcconfig
-          git commit -m "chore(uat): bump build number to $NEW_BUILD [skip ci]"
-          git push origin develop || echo "⚠️ Failed to push build number, but deployment was successful"
-          echo "✅ UAT Build number committed: $NEW_BUILD"
+
+          # Pull latest changes to avoid conflicts
+          git pull --rebase origin develop || echo "⚠️ Pull failed, will try to push anyway"
+
+          # Add both CHANGELOG and BuildNumbers.xcconfig
+          git add CHANGELOG.md Config/BuildNumbers.xcconfig
+
+          # Commit if there are changes
+          if ! git diff --staged --quiet; then
+            git commit -m "chore(uat): update CHANGELOG and bump build number to $NEW_BUILD [skip ci]"
+            git push origin develop || echo "⚠️ Failed to push changes, but deployment was successful"
+            echo "✅ CHANGELOG and UAT build number committed: $NEW_BUILD"
+          else
+            echo "ℹ️ No changes to commit"
+          fi
 
       - name: Clean up keychain
         if: always()
