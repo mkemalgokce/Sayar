@@ -9,9 +9,13 @@ CODE_SIGN_STYLE = Manual
 DEVELOPMENT_TEAM = Q9ARVAPAG3
 // Provisioning profiles are managed in Xcode project settings
 
-// Version & Build Number
+// Version
+// Marketing version is shown to users (e.g., "1.0.0")
 MARKETING_VERSION = 1.0.0
-CURRENT_PROJECT_VERSION = 6
+
+// Build Number
+// Each environment has its own build number in BuildNumbers.xcconfig
+// CURRENT_PROJECT_VERSION is set per-environment (Dev.xcconfig, UAT.xcconfig, Prod.xcconfig)
 
 // Build Settings
 ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES

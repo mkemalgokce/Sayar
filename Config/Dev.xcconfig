@@ -1,5 +1,6 @@
 // Dev Configuration
 #include "Base.xcconfig"
+#include "BuildNumbers.xcconfig"
 
 // Bundle Identifier
 PRODUCT_BUNDLE_IDENTIFIER = com.mkg.sayar.dev
@@ -28,6 +29,9 @@ API_TIMEOUT = 30
 
 // App Icon
 ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon_Dev
+
+// Build Number
+CURRENT_PROJECT_VERSION = $(CURRENT_PROJECT_VERSION_DEV)
 
 // Code Signing
 CODE_SIGN_IDENTITY = Apple Development

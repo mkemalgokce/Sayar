@@ -51,11 +51,13 @@ commit_preprocessors = [
 commit_parsers = [
   { message = "^feat", group = "<!-- 0 -->🚀 Features" },
   { message = "^fix", group = "<!-- 1 -->🐛 Bug Fixes" },
-  { message = "^doc", group = "<!-- 3 -->📚 Documentation" },
-  { message = "^perf", group = "<!-- 4 -->⚡ Performance" },
-  { message = "^refactor", group = "<!-- 2 -->🚜 Refactor" },
-  { message = "^style", group = "<!-- 5 -->🎨 Styling" },
-  { message = "^test", group = "<!-- 6 -->🧪 Testing" },
+  { message = "^perf", group = "<!-- 2 -->⚡ Performance" },
+  { message = "^refactor", group = "<!-- 3 -->🚜 Refactor" },
+
+  # Skip documentation, styling, and testing from release notes (keep in full CHANGELOG)
+  { message = "^doc", group = "<!-- 10 -->📚 Documentation" },
+  { message = "^style", group = "<!-- 11 -->🎨 Styling" },
+  { message = "^test", group = "<!-- 12 -->🧪 Testing" },
 
   # Skip CI/CD and automation commits (must be first to catch [skip ci])
   { message = ".*\\[skip ci\\].*", skip = true },
