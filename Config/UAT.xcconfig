@@ -27,8 +27,8 @@ ENABLE_DEBUG_MENU = YES
 ENABLE_ANALYTICS = YES
 API_TIMEOUT = 30
 
-// App Icon (modified at build time by script)
-ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon
+// App Icon
+ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon_UAT
 
 // Code Signing
 CODE_SIGN_IDENTITY = Apple Distribution
